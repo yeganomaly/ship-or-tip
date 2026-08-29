@@ -85,14 +85,16 @@ The public WalletConnect Project ID used by the demo is included in the client c
 8. Approve the transaction in Freighter.
 9. Check the success receipt and transaction hash.
 
-## Screenshots
+## Verified Testnet Transaction
 
-Submission screenshots will be added here:
+A successful 1 XLM tip was signed with Freighter Mobile and confirmed on Stellar Testnet.
 
-- Wallet connected state
-- Testnet XLM balance
-- Successful 1 XLM transaction
-- Transaction hash and confirmation receipt
+![Successful 1 XLM transaction and confirmation receipt](docs/transaction-success.png)
+
+- Amount: `1 XLM`
+- Status: `Confirmed`
+- Transaction hash: `3980e1542d48e8b17aae1123608b7644279b4d7045a7eb766cd3e60ad959b982`
+- [View transaction on Stellar Expert](https://stellar.expert/explorer/testnet/tx/3980e1542d48e8b17aae1123608b7644279b4d7045a7eb766cd3e60ad959b982)
 
 ## Safety
 
