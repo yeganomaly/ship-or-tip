@@ -1,15 +1,18 @@
 {
   "network": "testnet",
   "networkPassphrase": "Test SDF Network ; September 2015",
-  "contractId": "CB2EJPMDG26BXUQO46BII5DZCX6OJMEKFTCY6LYYWVVBLXLXSFSPG6K7",
+  "contractId": "CDUV2ODHI3V22VCXM23M7JDEAQK3RQSAECXLYQPRSJWDFK2O3CALA2GR",
   "xlmTokenContract": "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
-  "deployer": "GBJ5WORED3WVNCPC4KI75F4NXKR6B5SXZAUZI3C3KEKAWIH2IVR6ZPUO",
+  "deployer": "GBUXDCGPJ6TKBYG246WZU3YQQITA2PQZ65TZ55BRUKCTHB6NGRSFVTDZ",
   "wasmHash": "3c1892d743d8ec277fd286e868b456f5eea9d1fe273a81da863652abf61391f6",
   "transactions": {
     "upload": "38cb75e080871f770ba75efb22d560379e342e454c8ca5777d314032df1f2e76",
-    "deploy": "d25e5f9631a7408eba6320d8963b8d42b5e5e1f576d516e12b51a06c49535e8a",
-    "initialize": "80bbb63ccb6b0d80cf4d7fca9e3f3a1694f3ea36eee8770bd9ba6b2775077efa",
-    "createBuild": "07cade46e384ffeabb22965e85d3508332d9dbf3bf2db788ae484c47ff1a17f5",
-    "verifiedTip": "d5a0be50c47deedf938c4e5b24b68288872c980ec0fc5752f937b257349470c3"
+    "deploy": "05f329a769c5fc819b3adfc1ddc0ac0bd0006a3a8807dac15cca3e24f3c5c92b",
+    "initialize": "277c0d50e728a49746aa43e9fd30495fdb3005f42a46d590ab0b340b97e62d1d",
+    "createBuilds": {
+      "ship-or-tip": "0f022d691a963b2452db51318b36ea5bf217929229350110a55fda9101231d90",
+      "agent-field-notes": "4dde4a8530e779653c2476be83c5dc49123a511892b6ae8631d6743205e6f4e0",
+      "tiny-tool-club": "4f88ae7321f797c8f361709fb086426102db3e7e9af9ebf93565b907bee3bc08"
+    }
   }
 }

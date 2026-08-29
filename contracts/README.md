@@ -21,12 +21,12 @@ cargo test
 
 ## Testnet deployment
 
-- Contract ID: `CB2EJPMDG26BXUQO46BII5DZCX6OJMEKFTCY6LYYWVVBLXLXSFSPG6K7`
+- Contract ID: `CDUV2ODHI3V22VCXM23M7JDEAQK3RQSAECXLYQPRSJWDFK2O3CALA2GR`
 - XLM token contract: `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`
 - Wasm hash: `3c1892d743d8ec277fd286e868b456f5eea9d1fe273a81da863652abf61391f6`
 - Deploy transaction: `d25e5f9631a7408eba6320d8963b8d42b5e5e1f576d516e12b51a06c49535e8a`
 - Initialize transaction: `80bbb63ccb6b0d80cf4d7fca9e3f3a1694f3ea36eee8770bd9ba6b2775077efa`
 - `create_build` transaction: `07cade46e384ffeabb22965e85d3508332d9dbf3bf2db788ae484c47ff1a17f5`
-- Verified `tip` transaction: `d5a0be50c47deedf938c4e5b24b68288872c980ec0fc5752f937b257349470c3`
+- Verified `create_build` transaction: `4dde4a8530e779653c2476be83c5dc49123a511892b6ae8631d6743205e6f4e0`
 
 The complete deployment manifest is stored in `deployments/testnet.json`. No deployer secret or seed phrase is committed to the repository.

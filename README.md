@@ -34,9 +34,9 @@ Ship or Tip is being upgraded into a contract-backed multi-wallet dApp:
 | Transaction status | Preparing, wallet signature, pending, success, and failure are visible | Tip panel status UI |
 | Real-time synchronization | The frontend polls Soroban RPC every 5 seconds, decodes `TIP / received`, deduplicates events, and updates XLM/backer totals without refresh | **CONTRACT EVENT STREAM · LIVE** in each build panel |
 
-Contract ID: `CB2EJPMDG26BXUQO46BII5DZCX6OJMEKFTCY6LYYWVVBLXLXSFSPG6K7`
+Contract ID: `CDUV2ODHI3V22VCXM23M7JDEAQK3RQSAECXLYQPRSJWDFK2O3CALA2GR`
 
-[View the verified contract tip](https://stellar.expert/explorer/testnet/tx/d5a0be50c47deedf938c4e5b24b68288872c980ec0fc5752f937b257349470c3)
+[View a verified `create_build` contract call](https://stellar.expert/explorer/testnet/tx/4dde4a8530e779653c2476be83c5dc49123a511892b6ae8631d6743205e6f4e0)
 
 ## White Belt Features
 

@@ -12,7 +12,7 @@ import { Toaster } from "@/components/ui/sonner";
 const HORIZON_URL = "https://horizon-testnet.stellar.org";
 const SOROBAN_RPC_URL = "https://soroban-testnet.stellar.org";
 const EXPLORER_URL = "https://stellar.expert/explorer/testnet/tx";
-const CONTRACT_ID = "CB2EJPMDG26BXUQO46BII5DZCX6OJMEKFTCY6LYYWVVBLXLXSFSPG6K7";
+const CONTRACT_ID = "CDUV2ODHI3V22VCXM23M7JDEAQK3RQSAECXLYQPRSJWDFK2O3CALA2GR";
 const BUILDER_ADDRESS = "GA2PHFIXHVIAGCI4WJVZSN7CS7KT52HRB25CG6IWR4QHKWLTOYUFJNAP";
 const WALLETCONNECT_PROJECT_ID = "5d413ae328f966338156302b02894580";
 const builds = [
@@ -51,6 +51,7 @@ function friendlyError(error: unknown) {
   if (lower.includes("unsupported chain") || lower.includes("switch to")) return "Switch Freighter to Stellar Testnet and try again.";
   if (lower.includes("not found")) return "This Testnet account is not funded yet. Fund it with Friendbot and try again.";
   if (lower.includes("balance") || lower.includes("underfunded")) return "Your spendable XLM balance is too low for this tip.";
+  if (lower.includes("error(contract, #4)")) return "This build is not registered on the tipping contract yet.";
   return message || "Something went wrong. Please try again.";
 }
 
