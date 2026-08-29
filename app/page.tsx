@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowUpRight, Check, ChevronRight, Clock3, Copy, ExternalLink, LoaderCircle, Rocket, Unplug, Wallet } from "lucide-react";
-import { Asset, BASE_FEE, Horizon, Memo, Networks, Operation, TransactionBuilder } from "@stellar/stellar-sdk";
+import { Address, BASE_FEE, Horizon, Networks, Operation, TransactionBuilder, nativeToScVal, rpc } from "@stellar/stellar-sdk";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,9 @@ import { Progress } from "@/components/ui/progress";
 import { Toaster } from "@/components/ui/sonner";
 
 const HORIZON_URL = "https://horizon-testnet.stellar.org";
+const SOROBAN_RPC_URL = "https://soroban-testnet.stellar.org";
 const EXPLORER_URL = "https://stellar.expert/explorer/testnet/tx";
+const CONTRACT_ID = "CB2EJPMDG26BXUQO46BII5DZCX6OJMEKFTCY6LYYWVVBLXLXSFSPG6K7";
 const BUILDER_ADDRESS = "GA2PHFIXHVIAGCI4WJVZSN7CS7KT52HRB25CG6IWR4QHKWLTOYUFJNAP";
 const WALLETCONNECT_PROJECT_ID = "5d413ae328f966338156302b02894580";
 const builds = [
@@ -19,7 +21,8 @@ const builds = [
   { id: "tiny-tool-club", title: "Tiny Tool Club", builder: "mira", pitch: "One weird, useful micro-tool shipped every week for a month.", problem: "Small useful tool ideas are often abandoned because they feel too tiny to become full products.", shipping: "A four-week shipping club where every weekly micro-tool gets a public deadline, demo, and supporter feedback.", deadline: "Sep 20, 2026", status: "idea", days: 19, tipped: 9, backers: 4, recipient: BUILDER_ADDRESS },
 ];
 
-type TxState = { kind: "idle" } | { kind: "sending" } | { kind: "success"; hash: string; amount: string } | { kind: "error"; message: string };
+type TxStage = "preparing" | "signature" | "pending";
+type TxState = { kind: "idle" } | { kind: "sending"; stage: TxStage } | { kind: "success"; hash: string; amount: string } | { kind: "error"; message: string };
 type WalletKitApi = {
   authModal: () => Promise<{ address: string }>;
   getAddress: () => Promise<{ address: string }>;
@@ -30,6 +33,11 @@ type WalletKitApi = {
   disconnect: () => Promise<void>;
 };
 const shortAddress = (address: string) => address ? `${address.slice(0, 5)}…${address.slice(-4)}` : "";
+const txStageLabel: Record<TxStage, string> = {
+  preparing: "Preparing contract call",
+  signature: "Waiting for wallet signature",
+  pending: "Pending on Stellar Testnet",
+};
 
 function friendlyError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
@@ -126,26 +134,49 @@ export default function Home() {
     const numericAmount = Number(amount);
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) { setTx({ kind: "error", message: "Enter an amount greater than 0 XLM." }); return; }
     if (numericAmount > 1000) { setTx({ kind: "error", message: "Keep Testnet tips at or below 1,000 XLM." }); return; }
-    setTx({ kind: "sending" });
+    setTx({ kind: "sending", stage: "preparing" });
     try {
-      const server = new Horizon.Server(HORIZON_URL);
-      const sourceAccount = await server.loadAccount(publicKey);
+      const server = new rpc.Server(SOROBAN_RPC_URL);
+      const sourceAccount = await server.getAccount(publicKey);
+      const amountInStroops = BigInt(Math.round(numericAmount * 10_000_000));
       const transaction = new TransactionBuilder(sourceAccount, { fee: BASE_FEE, networkPassphrase: Networks.TESTNET })
-        .addOperation(Operation.payment({ destination: selectedBuild.recipient, asset: Asset.native(), amount: numericAmount.toFixed(7) }))
-        .addMemo(Memo.text("Ship or Tip")).setTimeout(180).build();
+        .addOperation(Operation.invokeContractFunction({
+          contract: CONTRACT_ID,
+          function: "tip",
+          args: [
+            nativeToScVal(selectedBuild.id, { type: "string" }),
+            Address.fromString(publicKey).toScVal(),
+            nativeToScVal(amountInStroops, { type: "i128" }),
+          ],
+        }))
+        .setTimeout(180)
+        .build();
+      const preparedTransaction = await server.prepareTransaction(transaction);
       const kit = walletKitRef.current;
       if (!kit) throw new Error("Connect a Stellar wallet before sending a tip.");
-      const { signedTxXdr } = await kit.signTransaction(transaction.toXDR(), {
+      setTx({ kind: "sending", stage: "signature" });
+      const { signedTxXdr } = await kit.signTransaction(preparedTransaction.toXDR(), {
         networkPassphrase: Networks.TESTNET,
         address: publicKey,
       });
       if (!signedTxXdr) throw new Error("The transaction was not signed.");
       const signedTransaction = TransactionBuilder.fromXDR(signedTxXdr, Networks.TESTNET);
-      const result = await server.submitTransaction(signedTransaction);
-      setTx({ kind: "success", hash: result.hash, amount: numericAmount.toString() });
+      setTx({ kind: "sending", stage: "pending" });
+      const submitted = await server.sendTransaction(signedTransaction);
+      if (submitted.status === "ERROR") throw new Error("The contract call was rejected by Stellar RPC.");
+
+      let confirmed = false;
+      for (let attempt = 0; attempt < 40; attempt += 1) {
+        const result = await server.getTransaction(submitted.hash);
+        if (result.status === "SUCCESS") { confirmed = true; break; }
+        if (result.status === "FAILED") throw new Error("The contract call failed on Stellar Testnet.");
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+      if (!confirmed) throw new Error("Confirmation is taking longer than expected. Check the transaction in Stellar Expert.");
+      setTx({ kind: "success", hash: submitted.hash, amount: numericAmount.toString() });
       await new Promise((resolve) => setTimeout(resolve, 1200));
       await refreshBalance(publicKey);
-      toast.success("Tip confirmed on Stellar Testnet");
+      toast.success("Contract tip confirmed on Stellar Testnet");
     } catch (error) {
       const message = friendlyError(error); setTx({ kind: "error", message }); toast.error(message);
     }
@@ -191,7 +222,7 @@ export default function Home() {
               <div className="amount-grid" aria-label="Suggested tip amount">{["1", "5", "10"].map(value => <button className={amount === value ? "amount-active" : ""} key={value} type="button" onClick={() => { setAmount(value); setTx({ kind: "idle" }); }}>{value} XLM</button>)}</div>
               <label className="amount-label" htmlFor="custom-amount">Custom amount</label><div className="amount-input"><Input id="custom-amount" inputMode="decimal" value={amount} onChange={event => { setAmount(event.target.value); setTx({ kind: "idle" }); }} /><span>XLM</span></div>
               {tx.kind === "error" && <p className="inline-error" role="alert">{tx.message}</p>}
-              <Button className="electric-button full-button tip-action" size="lg" onClick={sendTip} disabled={tx.kind === "sending"}>{tx.kind === "sending" ? <><LoaderCircle className="animate-spin" /> Waiting for confirmation</> : <><Rocket /> Tip this build</>}</Button>
+              <Button className="electric-button full-button tip-action" size="lg" onClick={sendTip} disabled={tx.kind === "sending"}>{tx.kind === "sending" ? <><LoaderCircle className="animate-spin" /> {txStageLabel[tx.stage]}</> : <><Rocket /> Tip this build</>}</Button>
               <div className="wallet-summary"><span>{publicKey ? "Connected balance" : "Wallet not connected"}</span><strong>{publicKey ? `${formattedBalance} XLM` : "Connect to continue"}</strong></div><p className="legal-note">Testnet only · tips go directly to the builder · not an investment</p></>}</aside>
         </div>
       </div>}
