@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = ["contracts/ship-or-tip"]
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true
+
