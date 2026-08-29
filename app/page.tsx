@@ -164,6 +164,7 @@ export default function Home() {
       const signedTransaction = TransactionBuilder.fromXDR(signed.signedXDR, Networks.TESTNET);
       const result = await server.submitTransaction(signedTransaction);
       setTx({ kind: "success", hash: result.hash, amount: numericAmount.toString() });
+      await new Promise((resolve) => setTimeout(resolve, 1200));
       await refreshBalance(publicKey);
       toast.success("Tip confirmed on Stellar Testnet");
     } catch (error) {
