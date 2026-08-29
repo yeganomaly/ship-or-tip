@@ -10,7 +10,7 @@ A Stellar Testnet dApp for public build commitments. Builders share what they pl
 
 Good ideas often disappear inside drafts. Ship or Tip gives builders a lightweight way to publish an idea, set a deadline, explain what they are building, and receive early support from people who want to see it shipped.
 
-The current White Belt release demonstrates the complete Stellar payment flow on Testnet.
+The current Yellow Belt release extends that payment flow with multi-wallet support, a deployed Soroban contract, and live contract-event synchronization.
 
 ## Yellow Belt Upgrade
 
@@ -22,6 +22,17 @@ Ship or Tip is being upgraded into a contract-backed multi-wallet dApp:
 - Contract-backed XLM transfers and onchain build statistics
 - Visible preparing, signature, pending, success, and failure states
 - Typed `TipReceived` events for live synchronization
+
+### Yellow Belt requirement map
+
+| Requirement | Implementation | Evidence |
+| --- | --- | --- |
+| Multi-wallet | Stellar Wallets Kit selector with Freighter, WalletConnect, xBull, Albedo, LOBSTR, Hana, and other supported modules | Open **Connect wallet** in the live demo |
+| 3 error types | Wallet unavailable, user rejection/cancel, insufficient balance, unfunded account, wrong network, RPC failure, and confirmation timeout have human-readable UI feedback | `friendlyError` and inline transaction feedback in `app/page.tsx` |
+| Contract on Testnet | Rust/Soroban `ship-or-tip` contract | Contract ID below and `deployments/testnet.json` |
+| Frontend contract call | The tip button invokes `tip(build_id, backer, amount)` and transfers native XLM through the contract | Verified contract-call transaction below |
+| Transaction status | Preparing, wallet signature, pending, success, and failure are visible | Tip panel status UI |
+| Real-time synchronization | The frontend polls Soroban RPC every 5 seconds, decodes `TIP / received`, deduplicates events, and updates XLM/backer totals without refresh | **CONTRACT EVENT STREAM · LIVE** in each build panel |
 
 Contract ID: `CB2EJPMDG26BXUQO46BII5DZCX6OJMEKFTCY6LYYWVVBLXLXSFSPG6K7`
 
@@ -44,9 +55,10 @@ Contract ID: `CB2EJPMDG26BXUQO46BII5DZCX6OJMEKFTCY6LYYWVVBLXLXSFSPG6K7`
 ## Stellar Integration
 
 - Network: Stellar Testnet
-- Wallet: Freighter Mobile
-- Connection protocol: WalletConnect v2
+- Wallet integration: Stellar Wallets Kit
+- Connection methods: browser wallets plus WalletConnect v2 for Freighter Mobile
 - Horizon endpoint: `https://horizon-testnet.stellar.org`
+- Soroban RPC endpoint: `https://soroban-testnet.stellar.org`
 - Explorer: Stellar Expert Testnet
 - Demo recipient: `GA2PHFIXHVIAGCI4WJVZSN7CS7KT52HRB25CG6IWR4QHKWLTOYUFJNAP`
 
@@ -58,9 +70,9 @@ All assets and transactions in this project are for testing only and have no rea
 - React 19
 - TypeScript
 - Stellar SDK
-- Freighter Mobile
-- WalletConnect Universal Provider
-- Reown AppKit
+- Stellar Wallets Kit
+- Rust / Soroban SDK
+- WalletConnect v2
 - Tailwind CSS
 - Radix UI
 - Sonner
@@ -86,7 +98,7 @@ Open `http://localhost:3000` in your browser.
 
 The public WalletConnect Project ID used by the demo is included in the client code. For a fork or production deployment, replace it with your own Project ID from the Reown Dashboard.
 
-## Test the Payment Flow
+## Test the Contract Payment Flow
 
 1. Open Ship or Tip.
 2. Select a build.
@@ -95,8 +107,10 @@ The public WalletConnect Project ID used by the demo is included in the client c
 5. Approve the Testnet connection.
 6. Confirm that the XLM balance appears in the header.
 7. Choose a tip amount.
-8. Approve the transaction in Freighter.
-9. Check the success receipt and transaction hash.
+8. Watch the UI advance through **Preparing contract call**, **Waiting for wallet signature**, and **Pending on Stellar Testnet**.
+9. Approve the contract invocation in the selected wallet.
+10. Check the success receipt and transaction hash.
+11. Return to the build and confirm the contract event stream updates the total and recent activity without a page refresh.
 
 ## Wallet Connection and Balance
 
@@ -124,4 +138,4 @@ A successful 1 XLM tip was signed with Freighter Mobile and confirmed on Stellar
 
 ## Builder
 
-Built by [@yeganomaly](https://github.com/yeganomaly) for the Stellar Journey to Mastery — White Belt challenge.
+Built by [@yeganomaly](https://github.com/yeganomaly) for the Stellar Journey to Mastery — Yellow Belt challenge.
