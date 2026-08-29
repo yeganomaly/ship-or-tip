@@ -55,7 +55,7 @@ export default function Home() {
   const providerRef = useRef<WalletProvider | null>(null);
   const modalRef = useRef<WalletModal | null>(null);
   const selectedBuild = builds.find((build) => build.id === selectedBuildId) ?? builds[0];
-  const formattedBalance = useMemo(() => balance === null ? "—" : Number(balance).toFixed(2), [balance]);
+  const formattedBalance = useMemo(() => balance === null ? "—" : Number(balance).toFixed(5), [balance]);
 
   async function refreshBalance(address: string) {
     const server = new Horizon.Server(HORIZON_URL);
