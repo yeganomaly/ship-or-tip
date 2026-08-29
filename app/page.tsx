@@ -84,7 +84,7 @@ export default function Home() {
       const modal = createAppKit({
         projectId: WALLETCONNECT_PROJECT_ID,
         networks: [mainnet],
-        universalProvider: provider,
+        universalProvider: provider as never,
         manualWCControl: true,
       });
       if (!active) return;
