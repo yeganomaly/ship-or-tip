@@ -19,5 +19,13 @@ stellar contract build
 cargo test
 ```
 
-The deployment ID and verified Testnet invocation hash will be recorded here after deployment.
+## Testnet deployment
 
+- Contract ID: `CB2EJPMDG26BXUQO46BII5DZCX6OJMEKFTCY6LYYWVVBLXLXSFSPG6K7`
+- XLM token contract: `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`
+- Wasm hash: `3c1892d743d8ec277fd286e868b456f5eea9d1fe273a81da863652abf61391f6`
+- Deploy transaction: `d25e5f9631a7408eba6320d8963b8d42b5e5e1f576d516e12b51a06c49535e8a`
+- Initialize transaction: `80bbb63ccb6b0d80cf4d7fca9e3f3a1694f3ea36eee8770bd9ba6b2775077efa`
+- `create_build` transaction: `07cade46e384ffeabb22965e85d3508332d9dbf3bf2db788ae484c47ff1a17f5`
+
+The complete deployment manifest is stored in `deployments/testnet.json`. No deployer secret or seed phrase is committed to the repository.
