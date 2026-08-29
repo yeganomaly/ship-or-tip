@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Space_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Space_Mono, Syne } from "next/font/google";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -15,6 +15,13 @@ const spaceMono = Space_Mono({
   display: "swap",
 });
 
+const syne = Syne({
+  subsets: ["latin"],
+  variable: "--font-syne",
+  weight: ["600", "700", "800"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Ship or Tip",
   description: "Public build commitments, backed by small tips on Stellar Testnet.",
@@ -23,7 +30,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`dark ${bricolage.variable} ${spaceMono.variable}`}>
+    <html lang="en" className={`dark ${bricolage.variable} ${spaceMono.variable} ${syne.variable}`}>
       <body>{children}</body>
     </html>
   );
