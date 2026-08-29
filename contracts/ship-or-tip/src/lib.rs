@@ -1,8 +1,7 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contracterror, contractevent, contractimpl, contracttype, token, Address, Env,
-    String,
+    contract, contracterror, contractevent, contractimpl, contracttype, token, Address, Env, String,
 };
 
 #[contracttype]
@@ -33,7 +32,7 @@ pub enum ContractError {
     InvalidAmount = 5,
 }
 
-#[contractevent(topics = ["TIP", "received"], data_format = "single-value")]
+#[contractevent(topics = ["TIP", "received"], data_format = "vec")]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TipReceived {
     pub build_id: String,
@@ -49,11 +48,7 @@ pub struct ShipOrTipContract;
 
 #[contractimpl]
 impl ShipOrTipContract {
-    pub fn initialize(
-        env: Env,
-        admin: Address,
-        token: Address,
-    ) -> Result<(), ContractError> {
+    pub fn initialize(env: Env, admin: Address, token: Address) -> Result<(), ContractError> {
         if env.storage().instance().has(&DataKey::Admin) {
             return Err(ContractError::AlreadyInitialized);
         }
@@ -113,11 +108,7 @@ impl ShipOrTipContract {
             .get(&DataKey::Token)
             .ok_or(ContractError::NotInitialized)?;
 
-        token::TokenClient::new(&env, &token_address).transfer(
-            &backer,
-            &stats.recipient,
-            &amount,
-        );
+        token::TokenClient::new(&env, &token_address).transfer(&backer, &stats.recipient, &amount);
 
         let backer_key = DataKey::Backed(build_id.clone(), backer.clone());
         if !env.storage().persistent().has(&backer_key) {
@@ -148,3 +139,80 @@ impl ShipOrTipContract {
     }
 }
 
+#[cfg(test)]
+mod test {
+    use super::*;
+    use soroban_sdk::{testutils::Address as _, token, Address, Env, String};
+
+    struct Fixture {
+        env: Env,
+        contract_id: Address,
+        token_address: Address,
+        recipient: Address,
+        backer: Address,
+        build_id: String,
+    }
+
+    fn fixture() -> Fixture {
+        let env = Env::default();
+        env.mock_all_auths();
+
+        let contract_id = env.register(ShipOrTipContract, ());
+        let client = ShipOrTipContractClient::new(&env, &contract_id);
+        let admin = Address::generate(&env);
+        let token_issuer = Address::generate(&env);
+        let token_contract = env.register_stellar_asset_contract_v2(token_issuer);
+        let token_address = token_contract.address();
+        let token_admin = token::StellarAssetClient::new(&env, &token_address);
+        let recipient = Address::generate(&env);
+        let backer = Address::generate(&env);
+        let build_id = String::from_str(&env, "ship-or-tip");
+
+        client.initialize(&admin, &token_address);
+        client.create_build(&build_id, &recipient);
+        token_admin.mint(&backer, &50_000_000);
+
+        Fixture {
+            env,
+            contract_id,
+            token_address,
+            recipient,
+            backer,
+            build_id,
+        }
+    }
+
+    #[test]
+    fn transfers_tip_and_updates_build_stats() {
+        let f = fixture();
+        let client = ShipOrTipContractClient::new(&f.env, &f.contract_id);
+        let token = token::TokenClient::new(&f.env, &f.token_address);
+        let stats = client.tip(&f.build_id, &f.backer, &10_000_000);
+
+        assert_eq!(stats.total_tipped, 10_000_000);
+        assert_eq!(stats.backer_count, 1);
+        assert_eq!(token.balance(&f.recipient), 10_000_000);
+        assert_eq!(token.balance(&f.backer), 40_000_000);
+
+        let stored = client.get_build(&f.build_id);
+        assert_eq!(stored, stats);
+    }
+
+    #[test]
+    fn counts_a_repeat_backer_only_once() {
+        let f = fixture();
+        let client = ShipOrTipContractClient::new(&f.env, &f.contract_id);
+        client.tip(&f.build_id, &f.backer, &10_000_000);
+        let stats = client.tip(&f.build_id, &f.backer, &5_000_000);
+
+        assert_eq!(stats.total_tipped, 15_000_000);
+        assert_eq!(stats.backer_count, 1);
+    }
+
+    #[test]
+    fn rejects_zero_amount() {
+        let f = fixture();
+        let client = ShipOrTipContractClient::new(&f.env, &f.contract_id);
+        assert!(client.try_tip(&f.build_id, &f.backer, &0).is_err());
+    }
+}
