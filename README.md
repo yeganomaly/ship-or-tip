@@ -4,7 +4,7 @@ A Stellar Testnet dApp for public build commitments. Builders share what they pl
 
 ## Live Demo
 
-[Open Ship or Tip](https://ship-or-tip.yeganeweb3.chatgpt.site)
+[Open Ship or Tip](https://ship-or-tip.vercel.app)
 
 > The deployed demo currently has restricted access while the White Belt submission is being prepared.
 
