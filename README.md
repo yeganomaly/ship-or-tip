@@ -36,7 +36,33 @@ Ship or Tip is being upgraded into a contract-backed multi-wallet dApp:
 
 Contract ID: `CDUV2ODHI3V22VCXM23M7JDEAQK3RQSAECXLYQPRSJWDFK2O3CALA2GR`
 
-[View a verified `create_build` contract call](https://stellar.expert/explorer/testnet/tx/4dde4a8530e779653c2476be83c5dc49123a511892b6ae8631d6743205e6f4e0)
+[View the verified `tip` contract call](https://stellar.expert/explorer/testnet/tx/58aa07fff8b2f303927d89f2a4ab9c57ce47b31cef2b39cab1796d0951d92162)
+
+## Yellow Belt Submission Evidence
+
+### Multi-wallet options
+
+Stellar Wallets Kit presents multiple connection methods, including Albedo, xBull, WalletConnect, Freighter, and Fordefi.
+
+![Stellar Wallets Kit multi-wallet options](docs/yellow-wallet-options.png)
+
+### Successful frontend contract call
+
+The frontend invoked the deployed `tip` function, the connected wallet signed it, and the transaction was confirmed on Stellar Testnet.
+
+![Confirmed 1 XLM Soroban contract tip](docs/yellow-contract-success.png)
+
+- Build: `Agent Field Notes`
+- Amount: `1 XLM`
+- Status: `Confirmed`
+- Transaction hash: `58aa07fff8b2f303927d89f2a4ab9c57ce47b31cef2b39cab1796d0951d92162`
+- [Verify on Stellar Expert](https://stellar.expert/explorer/testnet/tx/58aa07fff8b2f303927d89f2a4ab9c57ce47b31cef2b39cab1796d0951d92162)
+
+### Live event synchronization
+
+The `TIP / received` event stream updates the contract-backed total, unique backer count, and recent activity without a page refresh.
+
+![Live Soroban tip events synchronized in the UI](docs/yellow-live-events.png)
 
 ## White Belt Features
 

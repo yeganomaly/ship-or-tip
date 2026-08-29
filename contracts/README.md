@@ -27,6 +27,6 @@ cargo test
 - Deploy transaction: `d25e5f9631a7408eba6320d8963b8d42b5e5e1f576d516e12b51a06c49535e8a`
 - Initialize transaction: `80bbb63ccb6b0d80cf4d7fca9e3f3a1694f3ea36eee8770bd9ba6b2775077efa`
 - `create_build` transaction: `07cade46e384ffeabb22965e85d3508332d9dbf3bf2db788ae484c47ff1a17f5`
-- Verified `create_build` transaction: `4dde4a8530e779653c2476be83c5dc49123a511892b6ae8631d6743205e6f4e0`
+- Verified `tip` transaction: `58aa07fff8b2f303927d89f2a4ab9c57ce47b31cef2b39cab1796d0951d92162`
 
 The complete deployment manifest is stored in `deployments/testnet.json`. No deployer secret or seed phrase is committed to the repository.
