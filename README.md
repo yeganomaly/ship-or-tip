@@ -12,6 +12,21 @@ Good ideas often disappear inside drafts. Ship or Tip gives builders a lightweig
 
 The current White Belt release demonstrates the complete Stellar payment flow on Testnet.
 
+## Yellow Belt Upgrade
+
+Ship or Tip is being upgraded into a contract-backed multi-wallet dApp:
+
+- Multi-wallet connection through Stellar Wallets Kit
+- Freighter Mobile support through WalletConnect
+- Rust/Soroban tipping contract deployed on Testnet
+- Contract-backed XLM transfers and onchain build statistics
+- Visible preparing, signature, pending, success, and failure states
+- Typed `TipReceived` events for live synchronization
+
+Contract ID: `CB2EJPMDG26BXUQO46BII5DZCX6OJMEKFTCY6LYYWVVBLXLXSFSPG6K7`
+
+[View the verified contract tip](https://stellar.expert/explorer/testnet/tx/d5a0be50c47deedf938c4e5b24b68288872c980ec0fc5752f937b257349470c3)
+
 ## White Belt Features
 
 - Connect and disconnect Freighter Mobile through WalletConnect v2
