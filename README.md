@@ -6,8 +6,6 @@ A Stellar Testnet dApp for public build commitments. Builders share what they pl
 
 [Open Ship or Tip](https://ship-or-tip.vercel.app)
 
-> The deployed demo currently has restricted access while the White Belt submission is being prepared.
-
 ## The Idea
 
 Good ideas often disappear inside drafts. Ship or Tip gives builders a lightweight way to publish an idea, set a deadline, explain what they are building, and receive early support from people who want to see it shipped.
@@ -84,6 +82,12 @@ The public WalletConnect Project ID used by the demo is included in the client c
 7. Choose a tip amount.
 8. Approve the transaction in Freighter.
 9. Check the success receipt and transaction hash.
+
+## Wallet Connection and Balance
+
+The connected Freighter wallet address and live Testnet XLM balance are displayed clearly in the header.
+
+![Freighter wallet connected with live XLM balance](docs/wallet-connected-balance.png)
 
 ## Verified Testnet Transaction
 
