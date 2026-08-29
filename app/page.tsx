@@ -13,8 +13,6 @@ const HORIZON_URL = "https://horizon-testnet.stellar.org";
 const EXPLORER_URL = "https://stellar.expert/explorer/testnet/tx";
 const BUILDER_ADDRESS = "GA2PHFIXHVIAGCI4WJVZSN7CS7KT52HRB25CG6IWR4QHKWLTOYUFJNAP";
 const WALLETCONNECT_PROJECT_ID = "5d413ae328f966338156302b02894580";
-const STELLAR_CHAIN = "stellar:testnet";
-
 const builds = [
   { id: "ship-or-tip", title: "Ship or Tip", builder: "yeganomaly", pitch: "A place to publicly commit to a build and let early believers fund the follow-through.", problem: "Too many good ideas die in drafts. New builders need accountability, early validation, and a little support to keep shipping.", shipping: "A Stellar Testnet dApp where builders publish a commitment and supporters tip the ideas they want to see shipped.", deadline: "Sep 7, 2026", status: "building", days: 6, tipped: 42, backers: 12, recipient: BUILDER_ADDRESS },
   { id: "agent-field-notes", title: "Agent Field Notes", builder: "noa", pitch: "An open research log for experiments run by autonomous agents.", problem: "Useful agent experiments disappear inside private chats and terminal logs, making it hard for other builders to learn from them.", shipping: "A public field notebook for short agent experiments, prompts, outcomes, and reproducible build notes.", deadline: "Sep 12, 2026", status: "building", days: 11, tipped: 18, backers: 7, recipient: BUILDER_ADDRESS },
@@ -22,21 +20,23 @@ const builds = [
 ];
 
 type TxState = { kind: "idle" } | { kind: "sending" } | { kind: "success"; hash: string; amount: string } | { kind: "error"; message: string };
-type StellarSession = { namespaces: { stellar?: { accounts?: string[]; methods?: string[] } } };
-type WalletProvider = {
-  session?: StellarSession;
-  connect: (options: object) => Promise<StellarSession | undefined>;
+type WalletKitApi = {
+  authModal: () => Promise<{ address: string }>;
+  getAddress: () => Promise<{ address: string }>;
+  signTransaction: (
+    xdr: string,
+    options: { networkPassphrase: string; address: string },
+  ) => Promise<{ signedTxXdr: string }>;
   disconnect: () => Promise<void>;
-  on: (event: string, listener: () => void) => void;
-  request: (request: { method: string; params: object }, chain: string) => Promise<unknown>;
 };
-type WalletModal = { open: () => Promise<void>; close: () => Promise<void> };
 const shortAddress = (address: string) => address ? `${address.slice(0, 5)}…${address.slice(-4)}` : "";
 
 function friendlyError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   const lower = message.toLowerCase();
   if (lower.includes("user declined") || lower.includes("rejected")) return "The request was cancelled in Freighter.";
+  if (lower.includes("closed the modal")) return "Wallet selection was cancelled.";
+  if (lower.includes("not connected") || lower.includes("not available")) return "That wallet is not available on this device. Choose another wallet or install it first.";
   if (lower.includes("proposal expired") || lower.includes("timeout")) return "The connection request expired. Open Freighter and try again.";
   if (lower.includes("unsupported chain") || lower.includes("switch to")) return "Switch Freighter to Stellar Testnet and try again.";
   if (lower.includes("not found")) return "This Testnet account is not funded yet. Fund it with Friendbot and try again.";
@@ -52,8 +52,7 @@ export default function Home() {
   const [walletBusy, setWalletBusy] = useState(false);
   const [amount, setAmount] = useState("1");
   const [tx, setTx] = useState<TxState>({ kind: "idle" });
-  const providerRef = useRef<WalletProvider | null>(null);
-  const modalRef = useRef<WalletModal | null>(null);
+  const walletKitRef = useRef<WalletKitApi | null>(null);
   const selectedBuild = builds.find((build) => build.id === selectedBuildId) ?? builds[0];
   const formattedBalance = useMemo(() => balance === null ? "—" : Number(balance).toFixed(5), [balance]);
 
@@ -67,12 +66,13 @@ export default function Home() {
   useEffect(() => {
     let active = true;
     (async () => {
-      const [{ UniversalProvider }, { createAppKit }, { mainnet }] = await Promise.all([
-        import("@walletconnect/universal-provider"),
-        import("@reown/appkit/core"),
-        import("@reown/appkit/networks"),
+      const [{ StellarWalletsKit }, { defaultModules }, walletConnect, walletTypes] = await Promise.all([
+        import("@creit-tech/stellar-wallets-kit/sdk"),
+        import("@creit-tech/stellar-wallets-kit/modules/utils"),
+        import("@creit-tech/stellar-wallets-kit/modules/wallet-connect"),
+        import("@creit-tech/stellar-wallets-kit/types"),
       ]);
-      const provider = await UniversalProvider.init({
+      const walletConnectModule = new walletConnect.WalletConnectModule({
         projectId: WALLETCONNECT_PROJECT_ID,
         metadata: {
           name: "Ship or Tip",
@@ -80,28 +80,23 @@ export default function Home() {
           url: window.location.origin,
           icons: [`${window.location.origin}/favicon.svg`],
         },
+        allowedChains: [walletConnect.WalletConnectTargetChain.TESTNET],
       });
-      const modal = createAppKit({
-        projectId: WALLETCONNECT_PROJECT_ID,
-        networks: [mainnet],
-        universalProvider: provider as never,
-        manualWCControl: true,
+      StellarWalletsKit.init({
+        modules: [...defaultModules(), walletConnectModule],
+        network: walletTypes.Networks.TESTNET,
+        authModal: { showInstallLabel: true, hideUnsupportedWallets: false },
       });
       if (!active) return;
-      providerRef.current = provider as WalletProvider;
-      modalRef.current = modal as WalletModal;
+      walletKitRef.current = StellarWalletsKit as WalletKitApi;
 
-      const restoreAccount = async () => {
-        const account = provider.session?.namespaces.stellar?.accounts?.[0];
-        if (!account) return;
-        const address = account.split(":")[2];
-        if (!address) return;
+      try {
+        const { address } = await StellarWalletsKit.getAddress();
         setPublicKey(address);
         await refreshBalance(address);
-      };
-      provider.on("session_delete", () => { setPublicKey(""); setBalance(null); setTx({ kind: "idle" }); });
-      provider.on("session_expire", () => { setPublicKey(""); setBalance(null); setTx({ kind: "idle" }); });
-      await restoreAccount();
+      } catch {
+        // A fresh visit has no active wallet yet.
+      }
     })().catch((error) => toast.error(friendlyError(error)));
     return () => { active = false; };
   }, []);
@@ -109,35 +104,19 @@ export default function Home() {
   async function connectWallet() {
     setWalletBusy(true);
     try {
-      const provider = providerRef.current;
-      const modal = modalRef.current;
-      if (!provider || !modal) throw new Error("WalletConnect is still loading. Try again in a moment.");
-      await modal.open();
-      const session = await provider.connect({
-        namespaces: {
-          stellar: {
-            methods: ["stellar_signXDR"],
-            chains: [STELLAR_CHAIN],
-            events: ["accountsChanged"],
-          },
-        },
-      });
-      if (!session) throw new Error("Connection failed.");
-      const methods = session.namespaces.stellar?.methods ?? [];
-      if (!methods.includes("stellar_signXDR")) throw new Error("The selected wallet cannot sign Stellar transactions.");
-      const account = session.namespaces.stellar?.accounts?.[0];
-      const address = account?.split(":")[2];
-      if (!address) throw new Error("Freighter did not return a Stellar account.");
-      await modal.close();
+      const kit = walletKitRef.current;
+      if (!kit) throw new Error("Wallet options are still loading. Try again in a moment.");
+      const { address } = await kit.authModal();
+      if (!address) throw new Error("The selected wallet did not return a Stellar account.");
       setPublicKey(address);
       await refreshBalance(address);
-      toast.success("Freighter Mobile connected on Stellar Testnet");
+      toast.success("Wallet connected on Stellar Testnet");
     } catch (error) { toast.error(friendlyError(error)); }
-    finally { await modalRef.current?.close(); setWalletBusy(false); }
+    finally { setWalletBusy(false); }
   }
 
   async function disconnectWallet() {
-    await providerRef.current?.disconnect().catch(() => undefined);
+    await walletKitRef.current?.disconnect().catch(() => undefined);
     setPublicKey(""); setBalance(null); setTx({ kind: "idle" });
     toast.info("Wallet disconnected from this session");
   }
@@ -154,14 +133,14 @@ export default function Home() {
       const transaction = new TransactionBuilder(sourceAccount, { fee: BASE_FEE, networkPassphrase: Networks.TESTNET })
         .addOperation(Operation.payment({ destination: selectedBuild.recipient, asset: Asset.native(), amount: numericAmount.toFixed(7) }))
         .addMemo(Memo.text("Ship or Tip")).setTimeout(180).build();
-      const provider = providerRef.current;
-      if (!provider?.session) throw new Error("Connect Freighter Mobile before sending a tip.");
-      const signed = await provider.request(
-        { method: "stellar_signXDR", params: { xdr: transaction.toXDR() } },
-        STELLAR_CHAIN,
-      ) as { signedXDR?: string };
-      if (!signed.signedXDR) throw new Error("The transaction was not signed.");
-      const signedTransaction = TransactionBuilder.fromXDR(signed.signedXDR, Networks.TESTNET);
+      const kit = walletKitRef.current;
+      if (!kit) throw new Error("Connect a Stellar wallet before sending a tip.");
+      const { signedTxXdr } = await kit.signTransaction(transaction.toXDR(), {
+        networkPassphrase: Networks.TESTNET,
+        address: publicKey,
+      });
+      if (!signedTxXdr) throw new Error("The transaction was not signed.");
+      const signedTransaction = TransactionBuilder.fromXDR(signedTxXdr, Networks.TESTNET);
       const result = await server.submitTransaction(signedTransaction);
       setTx({ kind: "success", hash: result.hash, amount: numericAmount.toString() });
       await new Promise((resolve) => setTimeout(resolve, 1200));

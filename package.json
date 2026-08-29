@@ -9,6 +9,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@creit-tech/stellar-wallets-kit": "npm:@jsr/creit-tech__stellar-wallets-kit@^2.6.0",
     "@reown/appkit": "^1.8.23",
     "@stellar/stellar-sdk": "^17.0.1",
     "@tailwindcss/postcss": "^4.2.1",
