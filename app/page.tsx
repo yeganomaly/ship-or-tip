@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowUpRight, Check, ChevronRight, Clock3, Copy, ExternalLink, LoaderCircle, Rocket, Unplug, Wallet } from "lucide-react";
-import { Address, BASE_FEE, Horizon, Networks, Operation, TransactionBuilder, nativeToScVal, rpc } from "@stellar/stellar-sdk";
+import { Address, BASE_FEE, Horizon, Networks, Operation, TransactionBuilder, nativeToScVal, rpc, scValToNative } from "@stellar/stellar-sdk";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,8 @@ const builds = [
 
 type TxStage = "preparing" | "signature" | "pending";
 type TxState = { kind: "idle" } | { kind: "sending"; stage: TxStage } | { kind: "success"; hash: string; amount: string } | { kind: "error"; message: string };
+type ContractStats = Record<string, { tipped: number; backers: number }>;
+type LiveTip = { id: string; buildId: string; backer: string; amount: number; txHash: string; closedAt: string };
 type WalletKitApi = {
   authModal: () => Promise<{ address: string }>;
   getAddress: () => Promise<{ address: string }>;
@@ -60,8 +62,13 @@ export default function Home() {
   const [walletBusy, setWalletBusy] = useState(false);
   const [amount, setAmount] = useState("1");
   const [tx, setTx] = useState<TxState>({ kind: "idle" });
+  const [contractStats, setContractStats] = useState<ContractStats>({});
+  const [liveTips, setLiveTips] = useState<LiveTip[]>([]);
+  const [eventSync, setEventSync] = useState<"connecting" | "live" | "retrying">("connecting");
   const walletKitRef = useRef<WalletKitApi | null>(null);
+  const eventCursorRef = useRef("");
   const selectedBuild = builds.find((build) => build.id === selectedBuildId) ?? builds[0];
+  const selectedStats = contractStats[selectedBuild.id] ?? { tipped: selectedBuild.tipped, backers: selectedBuild.backers };
   const formattedBalance = useMemo(() => balance === null ? "—" : Number(balance).toFixed(5), [balance]);
 
   async function refreshBalance(address: string) {
@@ -107,6 +114,62 @@ export default function Home() {
       }
     })().catch((error) => toast.error(friendlyError(error)));
     return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const server = new rpc.Server(SOROBAN_RPC_URL);
+
+    async function syncContractEvents() {
+      try {
+        const request = eventCursorRef.current
+          ? { filters: [{ type: "contract" as const, contractIds: [CONTRACT_ID] }], cursor: eventCursorRef.current, limit: 100 }
+          : await server.getLatestLedger().then(({ sequence }) => ({
+              filters: [{ type: "contract" as const, contractIds: [CONTRACT_ID] }],
+              startLedger: Math.max(1, sequence - 120),
+              limit: 100,
+            }));
+        const response = await server.getEvents(request);
+        if (!active) return;
+        eventCursorRef.current = response.cursor;
+        const received = response.events.flatMap((event): LiveTip[] => {
+          const topic = event.topic.map((part) => scValToNative(part));
+          if (topic[0] !== "TIP" || topic[1] !== "received") return [];
+          const value = scValToNative(event.value);
+          if (!Array.isArray(value) || value.length < 6) return [];
+          const [buildId, backer, , amountStroops] = value;
+          return [{
+            id: event.id,
+            buildId: String(buildId),
+            backer: String(backer),
+            amount: Number(amountStroops) / 10_000_000,
+            txHash: event.txHash,
+            closedAt: event.ledgerClosedAt,
+          }];
+        });
+        if (received.length) {
+          setLiveTips((current) => [...received, ...current].filter((tip, index, all) => all.findIndex((item) => item.id === tip.id) === index).slice(0, 4));
+          setContractStats((current) => {
+            const next = { ...current };
+            response.events.forEach((event) => {
+              const topic = event.topic.map((part) => scValToNative(part));
+              if (topic[0] !== "TIP" || topic[1] !== "received") return;
+              const value = scValToNative(event.value);
+              if (!Array.isArray(value) || value.length < 6) return;
+              next[String(value[0])] = { tipped: Number(value[4]) / 10_000_000, backers: Number(value[5]) };
+            });
+            return next;
+          });
+        }
+        setEventSync("live");
+      } catch {
+        if (active) setEventSync("retrying");
+      }
+    }
+
+    void syncContractEvents();
+    const interval = window.setInterval(syncContractEvents, 5000);
+    return () => { active = false; window.clearInterval(interval); };
   }, []);
 
   async function connectWallet() {
@@ -218,12 +281,14 @@ export default function Home() {
           <section className="brief-section"><span>02</span><div><h2>What I’m shipping</h2><p>{selectedBuild.shipping}</p></div></section>
           <section className="brief-section"><span>03</span><div><h2>Deliverables</h2><ul><li>Live dApp and public GitHub repository</li><li>Freighter wallet connection and balance</li><li>Testnet XLM tipping with a shareable receipt</li></ul></div></section></article>
           <aside className="tip-panel">{tx.kind === "success" ? <div className="success-state"><span className="success-icon"><Check /></span><p className="eyebrow">Transaction confirmed</p><h2>you backed the build.</h2><p>{tx.amount} XLM sent on Stellar Testnet</p><div className="receipt-row"><span>Build</span><strong>{selectedBuild.title}</strong></div><div className="receipt-row"><span>Backer</span><strong>{shortAddress(publicKey)}</strong></div><div className="hash-box"><span>Transaction hash</span><code>{tx.hash}</code></div><a className="explorer-link" href={`${EXPLORER_URL}/${tx.hash}`} target="_blank" rel="noreferrer">View on Stellar Expert <ExternalLink /></a><Button className="electric-button full-button" onClick={copyReceipt}><Copy /> Copy receipt</Button><Button variant="ghost" className="full-button" onClick={() => setTx({ kind: "idle" })}>Back to build</Button></div>
-            : <><div className="tip-head"><span>backed so far</span><span>{selectedBuild.backers} backers</span></div><strong className="tip-total">{selectedBuild.tipped} XLM</strong><Progress value={Math.min(selectedBuild.tipped, 100)} className="tip-progress" /><p className="tip-context">No funding goal. Every tip keeps the build moving.</p>
+            : <><div className="tip-head"><span>backed so far</span><span>{selectedStats.backers} backers</span></div><strong className="tip-total">{selectedStats.tipped.toLocaleString(undefined, { maximumFractionDigits: 7 })} XLM</strong><Progress value={Math.min(selectedStats.tipped, 100)} className="tip-progress" /><p className="tip-context">No funding goal. Every tip keeps the build moving.</p>
               <div className="amount-grid" aria-label="Suggested tip amount">{["1", "5", "10"].map(value => <button className={amount === value ? "amount-active" : ""} key={value} type="button" onClick={() => { setAmount(value); setTx({ kind: "idle" }); }}>{value} XLM</button>)}</div>
               <label className="amount-label" htmlFor="custom-amount">Custom amount</label><div className="amount-input"><Input id="custom-amount" inputMode="decimal" value={amount} onChange={event => { setAmount(event.target.value); setTx({ kind: "idle" }); }} /><span>XLM</span></div>
               {tx.kind === "error" && <p className="inline-error" role="alert">{tx.message}</p>}
               <Button className="electric-button full-button tip-action" size="lg" onClick={sendTip} disabled={tx.kind === "sending"}>{tx.kind === "sending" ? <><LoaderCircle className="animate-spin" /> {txStageLabel[tx.stage]}</> : <><Rocket /> Tip this build</>}</Button>
-              <div className="wallet-summary"><span>{publicKey ? "Connected balance" : "Wallet not connected"}</span><strong>{publicKey ? `${formattedBalance} XLM` : "Connect to continue"}</strong></div><p className="legal-note">Testnet only · tips go directly to the builder · not an investment</p></>}</aside>
+              <div className="wallet-summary"><span>{publicKey ? "Connected balance" : "Wallet not connected"}</span><strong>{publicKey ? `${formattedBalance} XLM` : "Connect to continue"}</strong></div>
+              <div className="event-monitor"><div className="event-monitor-head"><span>CONTRACT EVENT STREAM</span><i className={eventSync}>{eventSync === "live" ? "LIVE" : eventSync === "connecting" ? "SYNCING" : "RETRYING"}</i></div>{liveTips.filter((tip) => tip.buildId === selectedBuild.id).length ? liveTips.filter((tip) => tip.buildId === selectedBuild.id).slice(0, 2).map((tip) => <a href={`${EXPLORER_URL}/${tip.txHash}`} target="_blank" rel="noreferrer" className="event-row" key={tip.id}><span><b>+{tip.amount.toLocaleString(undefined, { maximumFractionDigits: 7 })} XLM</b><small>{shortAddress(tip.backer)}</small></span><time>{new Date(tip.closedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time></a>) : <p>Watching Soroban for the next tip…</p>}</div>
+              <p className="legal-note">Testnet only · tips go directly to the builder · not an investment</p></>}</aside>
         </div>
       </div>}
       <footer><span>ship or tip · stellar testnet</span><span>commit. build. ship.</span></footer>
